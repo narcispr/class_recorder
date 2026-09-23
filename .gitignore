@@ -1,0 +1,16 @@
+# Generated recording sessions
+*.webm
+*.webm.crdownload
+recording-part-*.webm
+final-recording.webm
+plan.md
+
+# Operating-system files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor and local tooling state
+.vscode/
+.idea/
+*.swp

@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Portable Class Recorder</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="app-shell">
+    <header class="app-header">
+      <div>
+        <p class="eyebrow">LOCAL · OFFLINE · PORTABLE</p>
+        <h1>Class Recorder</h1>
+      </div>
+      <div id="recordingBadge" class="recording-badge" aria-live="polite">READY</div>
+    </header>
+
+    <section id="compatibility" class="compatibility" aria-live="polite">
+      <h2>Browser compatibility</h2>
+      <div id="compatibilityItems" class="compatibility-items"></div>
+    </section>
+
+    <div class="workspace">
+      <section class="controls" aria-label="Recording configuration">
+        <section class="control-group">
+          <div class="section-heading">
+            <h2>Course details</h2>
+            <div class="profile-buttons">
+              <button id="loadProfile" type="button" class="quiet-button">Load profile / layout</button>
+              <button id="saveProfile" type="button" class="quiet-button">Save profile / layout</button>
+            </div>
+          </div>
+          <label>Title <input id="title" data-state="metadata.title" value="Course name" maxlength="140"></label>
+          <label>Subtitle <input id="subtitle" data-state="metadata.subtitle" value="Topic name" maxlength="180"></label>
+          <label>Author <input id="author" data-state="metadata.author" value="Professor name" maxlength="100"></label>
+        </section>
+
+        <section class="control-group">
+          <h2>Background</h2>
+          <div id="palette" class="palette" role="radiogroup" aria-label="Background color"></div>
+        </section>
+
+        <section class="control-group">
+          <h2>Sources</h2>
+          <div class="source-row">
+            <button id="selectScreen" type="button">Select screen / window / tab</button>
+            <span id="screenState" class="source-state">Not selected</span>
+          </div>
+          <label class="check-label"><input id="includeSystemAudio" type="checkbox"> Include system / shared-screen audio</label>
+          <p id="systemAudioNotice" class="field-note" hidden></p>
+          <label>Microphone
+            <select id="microphone"><option value="">Choose a microphone…</option></select>
+          </label>
+          <div class="source-row compact">
+            <button id="activateMicrophone" type="button" class="secondary">Activate microphone</button>
+            <span id="microphoneState" class="source-state">Inactive</span>
+          </div>
+          <div class="meter" aria-label="Microphone level"><i id="meterFill"></i></div>
+          <label>Webcam
+            <select id="webcam"><option value="none">None</option></select>
+          </label>
+          <div class="source-row compact">
+            <button id="activateWebcam" type="button" class="secondary">Retry webcam</button>
+            <span id="webcamState" class="source-state">None</span>
+          </div>
+          <video id="webcamPreview" class="webcam-preview" muted playsinline hidden></video>
+        </section>
+
+        <section class="control-group transforms">
+          <h2>Screen layout</h2>
+          <label>Size / zoom <output for="screenScale">100%</output><input id="screenScale" data-state="screen.scale" type="range" min="20" max="120" value="100"></label>
+          <label>Position X <output for="screenX">50%</output><input id="screenX" data-state="screen.x" type="range" min="0" max="100" value="50"></label>
+          <label>Position Y <output for="screenY">50%</output><input id="screenY" data-state="screen.y" type="range" min="0" max="100" value="50"></label>
+          <div class="crop-grid">
+            <label>Crop left <output for="screenCropLeft">0%</output><input id="screenCropLeft" data-state="screen.cropLeft" type="range" min="0" max="45" value="0"></label>
+            <label>Crop right <output for="screenCropRight">0%</output><input id="screenCropRight" data-state="screen.cropRight" type="range" min="0" max="45" value="0"></label>
+            <label>Crop top <output for="screenCropTop">0%</output><input id="screenCropTop" data-state="screen.cropTop" type="range" min="0" max="45" value="0"></label>
+            <label>Crop bottom <output for="screenCropBottom">0%</output><input id="screenCropBottom" data-state="screen.cropBottom" type="range" min="0" max="45" value="0"></label>
+          </div>
+          <h2>Webcam layout</h2>
+          <label>Size / zoom <output for="webcamScale">25%</output><input id="webcamScale" data-state="webcam.scale" type="range" min="5" max="60" value="25"></label>
+          <label>Position X <output for="webcamX">82%</output><input id="webcamX" data-state="webcam.x" type="range" min="0" max="100" value="82"></label>
+          <label>Position Y <output for="webcamY">78%</output><input id="webcamY" data-state="webcam.y" type="range" min="0" max="100" value="78"></label>
+          <div class="crop-grid">
+            <label>Crop left <output for="cropLeft">0%</output><input id="cropLeft" data-state="webcam.cropLeft" type="range" min="0" max="45" value="0"></label>
+            <label>Crop right <output for="cropRight">0%</output><input id="cropRight" data-state="webcam.cropRight" type="range" min="0" max="45" value="0"></label>
+            <label>Crop top <output for="cropTop">0%</output><input id="cropTop" data-state="webcam.cropTop" type="range" min="0" max="45" value="0"></label>
+            <label>Crop bottom <output for="cropBottom">0%</output><input id="cropBottom" data-state="webcam.cropBottom" type="range" min="0" max="45" value="0"></label>
+          </div>
+        </section>
+
+        <section class="control-group transforms text-layout">
+          <h2>Text layout</h2>
+          <p class="field-note">Save profile / layout stores these positions, scales, crops, and colors. Load profile / layout restores them.</p>
+          <h3>Title</h3>
+          <label>Position X <output for="titleX">3%</output><input id="titleX" data-state="text.title.x" type="range" min="0" max="100" step="0.1" value="3.33"></label>
+          <label>Position Y <output for="titleY">6%</output><input id="titleY" data-state="text.title.y" type="range" min="0" max="100" step="0.1" value="5.93"></label>
+          <label>Scale <output for="titleScale">100%</output><input id="titleScale" data-state="text.title.scale" type="range" min="50" max="200" value="100"></label>
+          <h3>Subtitle</h3>
+          <label>Position X <output for="subtitleX">3%</output><input id="subtitleX" data-state="text.subtitle.x" type="range" min="0" max="100" step="0.1" value="3.33"></label>
+          <label>Position Y <output for="subtitleY">12%</output><input id="subtitleY" data-state="text.subtitle.y" type="range" min="0" max="100" step="0.1" value="11.57"></label>
+          <label>Scale <output for="subtitleScale">100%</output><input id="subtitleScale" data-state="text.subtitle.scale" type="range" min="50" max="200" value="100"></label>
+          <h3>Author</h3>
+          <label>Position X <output for="authorX">97%</output><input id="authorX" data-state="text.author.x" type="range" min="0" max="100" step="0.1" value="96.67"></label>
+          <label>Position Y <output for="authorY">96%</output><input id="authorY" data-state="text.author.y" type="range" min="0" max="100" step="0.1" value="95.56"></label>
+          <label>Scale <output for="authorScale">100%</output><input id="authorScale" data-state="text.author.scale" type="range" min="50" max="200" value="100"></label>
+        </section>
+
+        <section class="control-group output-group">
+          <h2>Destination</h2>
+          <label>Output filename <input id="outputFilename" value="course-name-topic-name_2026-09-23.webm" maxlength="180"></label>
+          <div class="source-row">
+            <button id="selectOutput" type="button">Select output folder</button>
+            <span id="outputState" class="source-state">No folder selected</span>
+          </div>
+          <label class="quality-control">Recording quality <output id="qualitySummary"></output>
+            <input id="recordingQuality" type="range" min="1" max="5" step="1" value="3" list="qualityTicks">
+          </label>
+          <datalist id="qualityTicks"><option value="1"><option value="2"><option value="3"><option value="4"><option value="5"></datalist>
+          <div class="quality-scale" aria-hidden="true"><span>Very compact</span><span>Balanced</span><span>Maximum</span></div>
+          <p class="field-note">These are bitrate estimates for screen recordings; mostly static slides often use less disk space.</p>
+          <label class="check-label"><input id="deleteParts" type="checkbox"> Delete temporary segment files after a successful merge</label>
+          <p class="field-note">Each session gets its own folder. Completed parts stay recoverable if Chrome or Windows stops unexpectedly.</p>
+        </section>
+      </section>
+
+      <section class="preview-panel">
+        <div class="preview-header">
+          <div><p class="eyebrow">LIVE COMPOSITION</p><h2>1920 × 1080</h2></div>
+          <span id="previewStatus">Preview</span>
+        </div>
+        <div class="canvas-wrap">
+          <canvas id="compositionCanvas" width="1920" height="1080" aria-label="Recording composition preview"></canvas>
+        </div>
+        <div class="recording-dashboard">
+          <div><span>Elapsed</span><strong id="elapsed">00:00:00</strong></div>
+          <div><span>Current segment</span><strong id="segmentElapsed">—</strong></div>
+          <div><span>Completed checkpoints</span><strong id="checkpoints">0</strong></div>
+        </div>
+        <p id="statusMessage" class="status-message" aria-live="polite">Choose a destination, a screen, and a microphone to begin.</p>
+        <p id="recordReadiness" class="record-readiness" aria-live="polite"></p>
+        <div class="recording-controls">
+          <button id="recordButton" type="button" class="record-button" disabled><span></span> REC</button>
+          <button id="stopButton" type="button" class="stop-button" disabled>STOP</button>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script src="lib/webm-remuxer.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
