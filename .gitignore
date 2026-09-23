@@ -4,6 +4,7 @@
 recording-part-*.webm
 final-recording.webm
 plan.md
+profiles/*
 
 # Operating-system files
 .DS_Store

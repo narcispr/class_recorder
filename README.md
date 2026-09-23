@@ -4,6 +4,8 @@ A completely local, dependency-free Chrome application for producing a 1920×108
 
 Created by Narcís Palomeras.
 
+<img src="./screenshot.png" alt="app screenshot" width="800">
+
 ## Use
 
 1. Copy the whole folder to the USB drive and open index.html in current desktop Google Chrome on Windows.
@@ -34,3 +36,6 @@ The Destination panel has five video-quality levels. Balanced is the default at 
 ## License
 
 MIT. See LICENSE.
+
+---
+_Narcís Palomeras_
