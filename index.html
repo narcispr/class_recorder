@@ -44,14 +44,16 @@
 
         <section class="control-group">
           <h2>Sources</h2>
+          <p class="field-note">Activate any combination of microphone, screen, and webcam. At least one source is required. Microphone alone records audio only.</p>
           <div class="source-row">
             <button id="selectScreen" type="button">Select screen / window / tab</button>
             <span id="screenState" class="source-state">Not selected</span>
           </div>
+          <button id="clearScreen" type="button" class="secondary">Disable screen</button>
           <label class="check-label"><input id="includeSystemAudio" type="checkbox"> Include system / shared-screen audio</label>
           <p id="systemAudioNotice" class="field-note" hidden></p>
           <label>Microphone
-            <select id="microphone"><option value="">Choose a microphone…</option></select>
+            <select id="microphone"><option value="">None</option></select>
           </label>
           <div class="source-row compact">
             <button id="activateMicrophone" type="button" class="secondary">Activate microphone</button>
@@ -70,7 +72,7 @@
 
         <section class="control-group transforms">
           <h2>Screen layout</h2>
-          <label>Size / zoom <output for="screenScale">100%</output><input id="screenScale" data-state="screen.scale" type="range" min="20" max="120" value="100"></label>
+          <label>Size / zoom <output for="screenScale">100%</output><input id="screenScale" data-state="screen.scale" type="range" min="10" max="150" value="100"></label>
           <label>Position X <output for="screenX">50%</output><input id="screenX" data-state="screen.x" type="range" min="0" max="100" value="50"></label>
           <label>Position Y <output for="screenY">50%</output><input id="screenY" data-state="screen.y" type="range" min="0" max="100" value="50"></label>
           <div class="crop-grid">
@@ -80,7 +82,7 @@
             <label>Crop bottom <output for="screenCropBottom">0%</output><input id="screenCropBottom" data-state="screen.cropBottom" type="range" min="0" max="45" value="0"></label>
           </div>
           <h2>Webcam layout</h2>
-          <label>Size / zoom <output for="webcamScale">25%</output><input id="webcamScale" data-state="webcam.scale" type="range" min="5" max="60" value="25"></label>
+          <label>Size / zoom <output for="webcamScale">25%</output><input id="webcamScale" data-state="webcam.scale" type="range" min="10" max="150" value="25"></label>
           <label>Position X <output for="webcamX">82%</output><input id="webcamX" data-state="webcam.x" type="range" min="0" max="100" value="82"></label>
           <label>Position Y <output for="webcamY">78%</output><input id="webcamY" data-state="webcam.y" type="range" min="0" max="100" value="78"></label>
           <div class="crop-grid">
@@ -139,7 +141,7 @@
           <div><span>Current segment</span><strong id="segmentElapsed">—</strong></div>
           <div><span>Completed checkpoints</span><strong id="checkpoints">0</strong></div>
         </div>
-        <p id="statusMessage" class="status-message" aria-live="polite">Choose a destination, a screen, and a microphone to begin.</p>
+        <p id="statusMessage" class="status-message" aria-live="polite">Choose a destination and activate at least one source to begin.</p>
         <p id="recordReadiness" class="record-readiness" aria-live="polite"></p>
         <div class="recording-controls">
           <button id="recordButton" type="button" class="record-button" disabled><span></span> REC</button>

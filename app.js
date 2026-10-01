@@ -9,8 +9,7 @@
   const PALETTE = [
     "#dcefe8", "#d9e8f3", "#e5e2f5", "#f3e3e6", "#fae8d4",
     "#f5f0d7", "#e4efd8", "#d9eeeb", "#d8e5dc", "#e7ece2",
-    "#d8e4ee", "#e2deee", "#f0dde5", "#f5dfd1", "#f2e6c8",
-    "#dcecd4", "#cfe4df", "#d2dfd8", "#e9e0d5", "#dfe7e5"
+    "#ffffff", "#000000"
   ];
   const QUALITY_LEVELS = [
     { name: "Very compact", video: 800000, audio: 96000 },
@@ -39,7 +38,7 @@
     },
     runtime: {
       compatibility: {}, worker: null, screenStream: null, screenVideo: null, microphoneStream: null,
-      webcamStream: null, webcamDeviceId: "", meterContext: null, meterAnalyser: null, meterFrame: null, webcamStateSelected: true,
+      webcamStream: null, webcamDeviceId: "", meterContext: null, meterAnalyser: null, meterFrame: null,
       outputRoot: null, sessionDirectory: null, compositionStream: null, canvasTrack: null, audioContext: null,
       recorder: null, currentSegment: null, finalizations: [], completedSegments: [], recording: false,
       rolling: false, rolloverPromise: null, stopping: false, startedAt: 0, selectedMimeType: "", filenameTouched: false,
@@ -84,8 +83,13 @@
     badge.textContent = value;
     badge.classList.toggle("active", active);
   }
-  function selectedMimeType() {
-    return ["video/webm;codecs=vp8,opus", "video/webm;codecs=vp9,opus", "video/webm"]
+  function selectedMimeType(includeAudio = true, includeVideo = true) {
+    const types = !includeVideo
+      ? ["audio/webm;codecs=opus", "audio/webm"]
+      : includeAudio
+      ? ["video/webm;codecs=vp8,opus", "video/webm;codecs=vp9,opus", "video/webm"]
+      : ["video/webm;codecs=vp8", "video/webm;codecs=vp9", "video/webm"];
+    return types
       .find((type) => MediaRecorder.isTypeSupported(type)) || "";
   }
   function applyQuality(level) {
@@ -115,7 +119,7 @@
       ["Camera / microphone API", !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && navigator.mediaDevices.enumerateDevices)],
       ["Screen capture", !!(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia)],
       ["MediaRecorder", "MediaRecorder" in window],
-      ["VP8 / Opus", "MediaRecorder" in window && !!selectedMimeType()],
+      ["WebM recording", "MediaRecorder" in window && !!selectedMimeType()],
       ["Local file writing", "showDirectoryPicker" in window && "FileSystemFileHandle" in window && typeof FileSystemFileHandle.prototype.createWritable === "function"],
       ["Canvas capture", !!canvas.captureStream && testCaptureTrack()],
       ["Web Workers", "Worker" in window]
@@ -126,10 +130,13 @@
       item.textContent = label; return item;
     }));
     state.runtime.compatibility = Object.fromEntries(checks);
-    $("compatibility").classList.toggle("has-fail", checks.some(([, passed]) => !passed));
+    $("compatibility").classList.toggle("has-fail", checks.some(([label, passed]) => !passed && ["MediaRecorder", "WebM recording", "Local file writing", "Canvas capture", "Web Workers"].includes(label)));
     return checks.every(([, passed]) => passed);
   }
-  function mandatoryReady() { return Object.values(state.runtime.compatibility).every(Boolean); }
+  function mandatoryReady() {
+    return ["MediaRecorder", "WebM recording", "Local file writing", "Canvas capture", "Web Workers"]
+      .every((name) => state.runtime.compatibility[name]);
+  }
 
   function renderPalette() {
     const palette = $("palette");
@@ -175,7 +182,7 @@
     context.fillRect(0, 0, WIDTH, HEIGHT);
     if (cropValuesAreValid(state.screen)) drawSource(state.runtime.screenVideo, state.screen, state.screen);
     if (state.webcam.enabled && cropValuesAreValid(state.webcam)) drawSource(state.runtime.webcamVideo, state.webcam, state.webcam);
-    context.fillStyle = "#26333b";
+    context.fillStyle = state.metadata.backgroundColor.toLowerCase() === "#000000" ? "#ffffff" : "#26333b";
     context.textBaseline = "top";
     const title = state.metadata.title || "";
     const subtitle = state.metadata.subtitle || "";
@@ -247,7 +254,7 @@
   async function refreshDevices() {
     try {
       const devices = await navigator.mediaDevices.enumerateDevices();
-      fillDeviceSelect($("microphone"), devices.filter((device) => device.kind === "audioinput"), "Choose a microphone…", state.audio.microphoneDeviceId);
+      fillDeviceSelect($("microphone"), devices.filter((device) => device.kind === "audioinput"), "None", state.audio.microphoneDeviceId);
       fillDeviceSelect($("webcam"), devices.filter((device) => device.kind === "videoinput"), "None", state.runtime.webcamDeviceId, true);
     } catch (error) { status(`Could not enumerate devices: ${error.message}`, "error"); }
   }
@@ -262,11 +269,23 @@
     if ([...select.options].some((item) => item.value === current)) select.value = current;
   }
   function stopStream(stream) { if (stream) stream.getTracks().forEach((track) => track.stop()); }
+  function releaseMicrophone() {
+    stopStream(state.runtime.microphoneStream);
+    state.runtime.microphoneStream = null;
+    state.audio.microphoneDeviceId = "";
+    state.runtime.meterAnalyser = null;
+    cancelAnimationFrame(state.runtime.meterFrame);
+    state.runtime.meterContext?.close().catch(() => {});
+    state.runtime.meterContext = null;
+    $("meterFill").style.width = "0%";
+    $("microphoneState").textContent = "Inactive";
+    updateRecordAvailability();
+  }
   async function activateMicrophone() {
     const id = $("microphone").value;
-    if (!id) { status("Choose a microphone first.", "error"); return; }
+    releaseMicrophone();
+    if (!id) return;
     try {
-      stopStream(state.runtime.microphoneStream);
       const audio = id === "default" ? { channelCount: 1, sampleRate: 48000 } : { deviceId: { exact: id }, channelCount: 1, sampleRate: 48000 };
       const stream = await navigator.mediaDevices.getUserMedia({ audio, video: false });
       state.runtime.microphoneStream = stream;
@@ -277,6 +296,7 @@
         state.runtime.microphoneStream = null;
         $("microphoneState").textContent = "Disconnected";
         updateRecordAvailability();
+        stopRecordingIfNoActiveSources("Microphone disconnected and no active sources remain. Recording was saved safely up to its latest completed data.");
       });
       startMeter(stream);
       await refreshDevices();
@@ -300,7 +320,6 @@
   }
   async function activateWebcam() {
     const id = $("webcam").value;
-    state.runtime.webcamStateSelected = true;
     stopStream(state.runtime.webcamStream); state.runtime.webcamStream = null; state.runtime.webcamVideo = null;
     if (id === "none") {
       state.webcam.enabled = false; state.runtime.webcamDeviceId = ""; $("webcamPreview").hidden = true; $("webcamState").textContent = "None";
@@ -313,11 +332,18 @@
       const video = $("webcamPreview"); video.srcObject = stream; await video.play();
       state.runtime.webcamStream = stream; state.runtime.webcamVideo = video; state.runtime.webcamDeviceId = stream.getVideoTracks()[0].getSettings().deviceId || id; state.webcam.enabled = true;
       video.hidden = false; $("webcamState").textContent = "Active";
-      stream.getVideoTracks()[0].addEventListener("ended", () => { if (state.webcam.enabled) { state.webcam.enabled = false; $("webcamState").textContent = "Disconnected"; renderComposition(); } });
+      stream.getVideoTracks()[0].addEventListener("ended", () => {
+        if (state.runtime.webcamStream !== stream || !state.webcam.enabled) return;
+        state.webcam.enabled = false;
+        $("webcamState").textContent = "Disconnected";
+        renderComposition();
+        updateRecordAvailability();
+        stopRecordingIfNoActiveSources("Webcam disconnected and no active sources remain. Recording was saved safely up to its latest completed data.");
+      });
       await refreshDevices(); renderComposition(); updateRecordAvailability();
     } catch (error) {
       state.webcam.enabled = false;
-      $("webcamState").textContent = "Unavailable — choose None to continue";
+      $("webcamState").textContent = "Unavailable";
       status(`Could not activate webcam: ${error.message}. Check Chrome's camera permission, then choose the camera again.`, "error");
       updateRecordAvailability();
     }
@@ -327,6 +353,7 @@
     stopStream(state.runtime.screenStream);
     state.runtime.screenStream = null; state.runtime.screenVideo = null;
     $("screenState").textContent = "Not selected";
+    $("systemAudioNotice").hidden = true;
     setTimeout(() => { state.runtime.suppressScreenEnd = false; }, 0);
     renderComposition(); updateRecordAvailability();
   }
@@ -342,12 +369,13 @@
         if (state.runtime.suppressScreenEnd) return;
         state.runtime.screenStream = null; state.runtime.screenVideo = null; $("screenState").textContent = "Capture ended";
         renderComposition(); updateRecordAvailability();
-        if (state.runtime.recording) stopRecording("Screen capture ended. Recording was saved safely up to its latest completed data.");
+        if (state.runtime.recording && hasActiveRecordingSource()) status("Screen capture ended. Recording continues with the remaining active source.", "success");
+        else if (state.runtime.recording) stopRecording("Screen capture ended and no active sources remain. Recording was saved safely up to its latest completed data.");
         else status("Screen capture ended.", "error");
       });
       const hasSharedAudio = stream.getAudioTracks().length > 0;
       $("systemAudioNotice").hidden = !state.audio.includeSystemAudio || hasSharedAudio;
-      $("systemAudioNotice").textContent = "System audio unavailable for this capture source. Microphone recording will continue.";
+      $("systemAudioNotice").textContent = "System audio unavailable for this capture source. Only an active microphone will supply audio.";
       $("systemAudioNotice").className = "field-note warning";
       $("screenState").textContent = hasSharedAudio ? "Ready · shared audio available" : "Ready";
       renderComposition(); updateRecordAvailability(); status("Screen capture is ready.", "success");
@@ -371,7 +399,7 @@
   function reflect() {
     ["title", "subtitle", "author"].forEach(k => $(k).value = state.metadata[k]);
     Object.entries(state.screen).forEach(([k, v]) => { const i = $(`screen${k[0].toUpperCase()}${k.slice(1)}`); if (i) i.value = v; });
-    Object.entries(state.webcam).forEach(([k, v]) => { const i = $(k); if (i?.type === "range") i.value = v; });
+    Object.entries(state.webcam).forEach(([k, v]) => { const i = $(k.startsWith("crop") ? k : `webcam${k[0].toUpperCase()}${k.slice(1)}`); if (i?.type === "range") i.value = v; });
     Object.entries(state.text).forEach(([name, layout]) => Object.entries(layout).forEach(([key, value]) => {
       const input = $(`${name}${key[0].toUpperCase()}${key.slice(1)}`);
       if (input) input.value = value;
@@ -384,7 +412,7 @@
       const [h] = await showOpenFilePicker({ types: [{ description: "Recorder profile", accept: { "application/json": [".json"] } }] });
       const p = JSON.parse(await (await h.getFile()).text()); if (!p || typeof p !== "object") throw new Error("Invalid profile");
       ["title", "subtitle", "author", "backgroundColor"].forEach(k => { if (typeof p.metadata?.[k] === "string") state.metadata[k] = p.metadata[k]; });
-      if (!PALETTE.includes(state.metadata.backgroundColor)) state.metadata.backgroundColor = PALETTE[0];
+      if (!/^#[0-9a-f]{6}$/i.test(state.metadata.backgroundColor)) state.metadata.backgroundColor = PALETTE[0];
       [["screen", ["cropLeft", "cropRight", "cropTop", "cropBottom", "x", "y", "scale"]], ["webcam", ["cropLeft", "cropRight", "cropTop", "cropBottom", "x", "y", "scale"]]].forEach(([g, keys]) => keys.forEach(k => {
         const v = Number(p[g]?.[k]); if (Number.isFinite(v)) state[g][k] = v;
       }));
@@ -392,11 +420,11 @@
         const value = Number(p.text?.[name]?.[key]); if (Number.isFinite(value)) state.text[name][key] = value;
       }));
       ["x", "y"].forEach(k => state.screen[k] = Math.max(0, Math.min(100, state.screen[k])));
-      state.screen.scale = Math.max(20, Math.min(120, state.screen.scale));
+      state.screen.scale = Math.max(10, Math.min(150, state.screen.scale));
       ["cropLeft", "cropRight", "cropTop", "cropBottom"].forEach(k => state.screen[k] = Math.max(0, Math.min(45, state.screen[k])));
       if (!cropValuesAreValid(state.screen)) Object.assign(state.screen, { cropLeft: 0, cropRight: 0, cropTop: 0, cropBottom: 0 });
       ["x", "y"].forEach(k => state.webcam[k] = Math.max(0, Math.min(100, state.webcam[k])));
-      state.webcam.scale = Math.max(5, Math.min(60, state.webcam.scale));
+      state.webcam.scale = Math.max(10, Math.min(150, state.webcam.scale));
       ["cropLeft", "cropRight", "cropTop", "cropBottom"].forEach(k => state.webcam[k] = Math.max(0, Math.min(45, state.webcam[k])));
       if (!cropValuesAreValid()) Object.assign(state.webcam, { cropLeft: 0, cropRight: 0, cropTop: 0, cropBottom: 0 });
       ["title", "subtitle", "author"].forEach(name => {
@@ -419,16 +447,29 @@
       if (e.name === "NotFoundError") return root.getDirectoryHandle(name, { create: true }); throw e;
     } } throw new Error("Could not find an unused session folder.");
   }
+  function liveTracks(stream, kind) {
+    return (stream?.getTracks() || []).filter(track => track.kind === kind && track.readyState === "live");
+  }
+  function hasActiveVideoSource() {
+    return liveTracks(state.runtime.screenStream, "video").length > 0 ||
+      (state.webcam.enabled && liveTracks(state.runtime.webcamStream, "video").length > 0);
+  }
+  function activeAudioTracks() {
+    return [...liveTracks(state.runtime.microphoneStream, "audio"),
+      ...(state.audio.includeSystemAudio ? liveTracks(state.runtime.screenStream, "audio") : [])];
+  }
+  function hasActiveRecordingSource() {
+    return hasActiveVideoSource() || activeAudioTracks().length > 0;
+  }
+  function stopRecordingIfNoActiveSources(reason) {
+    if (state.runtime.recording && !hasActiveRecordingSource()) stopRecording(reason);
+  }
   function updateRecordAvailability() {
     const r = state.runtime;
     const missing = [];
     if (!mandatoryReady()) missing.push("compatible Chrome APIs");
     if (!r.outputRoot) missing.push("an output folder");
-    const activeScreen = r.screenStream?.getVideoTracks().some(track => track.readyState !== "ended");
-    const activeMicrophone = r.microphoneStream?.getAudioTracks().some(track => track.readyState !== "ended");
-    if (!activeScreen) missing.push("a screen/window/tab");
-    if (!activeMicrophone) missing.push("an active microphone");
-    if (!r.webcamStateSelected) missing.push("a webcam choice");
+    if (!hasActiveRecordingSource()) missing.push("at least one active source (microphone, screen, or webcam)");
     const ready = missing.length === 0;
     $("recordButton").disabled = r.recording || !ready;
     $("recordButton").title = ready ? "Start recording" : `REC needs ${missing.join(", ")}.`;
@@ -442,9 +483,10 @@
     $("recordButton").disabled = yes || !updateRecordAvailability(); $("stopButton").disabled = !yes;
   }
   async function mixedAudio() {
+    const tracks = activeAudioTracks();
+    if (!tracks.length) return null;
     const ac = new AudioContext({ sampleRate: 48000 }); await ac.resume(); const dest = ac.createMediaStreamDestination();
-    ac.createMediaStreamSource(state.runtime.microphoneStream).connect(dest);
-    if (state.audio.includeSystemAudio && state.runtime.screenStream.getAudioTracks().length) ac.createMediaStreamSource(new MediaStream(state.runtime.screenStream.getAudioTracks())).connect(dest);
+    tracks.forEach(track => ac.createMediaStreamSource(new MediaStream([track])).connect(dest));
     state.runtime.audioContext = ac; return dest.stream.getAudioTracks()[0];
   }
   async function startSegment() {
@@ -473,8 +515,12 @@
     const r = state.runtime;
     try {
       state.recording.outputFilename = sanitizeFilename($("outputFilename").value); $("outputFilename").value = state.recording.outputFilename;
-      r.sessionDirectory = await sessionDirectory(r.outputRoot, state.recording.outputFilename); const audio = await mixedAudio(), stream = canvas.captureStream(0);
-      r.canvasTrack = stream.getVideoTracks()[0]; r.compositionStream = new MediaStream([r.canvasTrack, audio]); r.selectedMimeType = selectedMimeType();
+      r.sessionDirectory = await sessionDirectory(r.outputRoot, state.recording.outputFilename);
+      const audio = await mixedAudio(), includeVideo = hasActiveVideoSource();
+      r.canvasTrack = includeVideo ? canvas.captureStream(0).getVideoTracks()[0] : null;
+      r.compositionStream = new MediaStream([r.canvasTrack, audio].filter(Boolean));
+      r.selectedMimeType = selectedMimeType(!!audio, includeVideo);
+      if (!r.selectedMimeType) throw new Error("This recording mode is not supported by the browser.");
       Object.assign(r, { completedSegments: [], finalizations: [], recording: true, stopping: false, rolling: false, startedAt: performance.now() });
       setBadge(true, "● REC"); $("previewStatus").textContent = "Recording"; $("checkpoints").textContent = "0"; lock(true); await startSegment();
       status(`Recording to ${r.sessionDirectory.name}. Completed parts are recovery checkpoints.`, "success");
@@ -551,8 +597,8 @@
   }
   function initialize() {
     renderPalette(); bindInputs(); applyQuality(state.recording.quality); refreshDefaultFilename(); syncRangeOutputs(); renderComposition(); setupCompatibility(); startWorker(); refreshDevices(); updateRecordAvailability();
-    $("selectScreen").onclick = selectScreen; $("activateMicrophone").onclick = activateMicrophone; $("activateWebcam").onclick = activateWebcam; $("selectOutput").onclick = selectOutputDirectory;
-    $("microphone").onchange = () => { if ($("microphone").value) activateMicrophone(); };
+    $("selectScreen").onclick = selectScreen; $("clearScreen").onclick = releaseScreen; $("activateMicrophone").onclick = activateMicrophone; $("activateWebcam").onclick = activateWebcam; $("selectOutput").onclick = selectOutputDirectory;
+    $("microphone").onchange = activateMicrophone;
     $("webcam").onchange = activateWebcam;
     $("recordingQuality").oninput = event => applyQuality(event.target.value);
     $("saveProfile").onclick = saveProfile; $("loadProfile").onclick = loadProfile; $("recordButton").onclick = startRecording; $("stopButton").onclick = () => stopRecording();

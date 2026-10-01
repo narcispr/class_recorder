@@ -1,6 +1,6 @@
 # Portable Class Recorder
 
-A completely local, dependency-free Chrome application for producing a 1920×1080 course recording from a selected display, microphone, optional shared audio, and optional webcam.
+A completely local, dependency-free Chrome application for recording any combination of display, microphone, and webcam, with optional shared audio. Video recordings use a 1920×1080 composition; microphone-only recordings contain just audio.
 
 Created by Narcís Palomeras.
 
@@ -9,8 +9,8 @@ Created by Narcís Palomeras.
 ## Use
 
 1. Copy the whole folder to the USB drive and open index.html in current desktop Google Chrome on Windows.
-2. Check the compatibility panel, choose an output folder, select a screen/window/tab, select a microphone, and select a webcam or None. Chrome requests the required device permissions.
-3. Press REC. Chrome's native capture chooser controls which display and shared audio are available.
+2. Check the compatibility panel, choose an output folder, and activate at least one source: screen/window/tab, microphone, or webcam. Chrome requests the required device permissions. Select None to disable the microphone or webcam, or Disable screen to clear screen capture.
+3. Press REC. Any one source, any pair, or all three can be recorded. Chrome's native capture chooser controls which display and shared audio are available.
 4. Press STOP. The app safely closes the current part and remuxes saved WebM parts into the final file in the session folder.
 
 No web server, account, network request, CDN, installation, or runtime package is used.
@@ -29,6 +29,8 @@ The Destination panel has five video-quality levels. Balanced is the default at 
 - The worker supplies 25 fps render ticks and explicitly requests each canvas capture frame, so the recording does not depend on animation frames while the recorder tab is hidden.
 - Device IDs and output folder handles are never written to portable profile files.
 - Screen layout has independent left/right/top/bottom crop controls to remove captured projector margins.
+- Screen and webcam zoom both range from 10% to 150%.
+- The background palette includes white and black alongside a reduced set of pastel colors.
 - Text layout has independent X, Y, and scale controls for title, subtitle, and author.
 - Save profile / layout includes the screen and webcam transforms/crops, text positions/scales, colors, quality, and metadata; Load profile / layout restores them.
 - Shared/system audio depends on the Chrome chooser and the selected capture source. When it is unavailable, microphone-only recording continues.
