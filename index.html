@@ -124,13 +124,14 @@
           <div class="quality-scale" aria-hidden="true"><span>Very compact</span><span>Balanced</span><span>Maximum</span></div>
           <p class="field-note">These are bitrate estimates for screen recordings; mostly static slides often use less disk space.</p>
           <label class="check-label"><input id="deleteParts" type="checkbox"> Delete temporary segment files after a successful merge</label>
-          <p class="field-note">Each session gets its own folder. Completed parts stay recoverable if Chrome or Windows stops unexpectedly.</p>
+          <p class="field-note">Video is captured at up to 25 fps. A recovery part is closed every 15 seconds; completed parts survive a browser crash.</p>
+          <button id="recoverRecording" type="button" class="secondary">Recover a recording from its session folder</button>
         </section>
       </section>
 
       <section class="preview-panel">
         <div class="preview-header">
-          <div><p class="eyebrow">LIVE COMPOSITION</p><h2>1920 × 1080</h2></div>
+          <div><p class="eyebrow">LIVE COMPOSITION</p><h2>1920 × 1080 · 25 fps</h2></div>
           <span id="previewStatus">Preview</span>
         </div>
         <div class="canvas-wrap">
@@ -152,6 +153,7 @@
   </main>
 
   <script src="lib/webm-remuxer.js"></script>
+  <script src="worker.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
